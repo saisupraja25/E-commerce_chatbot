@@ -1,0 +1,35 @@
+import os
+import json
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
+from dotenv import load_dotenv
+from zoneinfo import ZoneInfo
+import streamlit as st
+
+load_dotenv()
+creds_json= os.environ.get("GOOGLE_SHEETS_CREDENTIALS")
+if creds_json is None:
+    creds_dict = dict(st.secrets["GOOGLE_SHEETS_CREDENTIALS"])
+else:
+    creds_dict = json.loads(creds_json) # for streamlit deployment
+creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
+
+scopes = [
+    'https://www.googleapis.com/auth/spreadsheets'
+]
+
+creds = Credentials.from_service_account_info(creds_dict,scopes=scopes)
+client = gspread.authorize(creds)
+
+sheet_id = os.getenv("GOOGLE_SHEETS_ID")
+workbook= client.open_by_key(sheet_id)
+sheet = workbook.worksheet('Sheet1')
+
+tz =  ZoneInfo("Asia/Kolkata") # Setting time zone to India
+def log_feedback(feedback):
+    query = feedback['query']
+    route = feedback['selected_route']
+    suggestion = feedback['suggestions']
+    sheet.append_row([datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"),query,route,suggestion])
+
